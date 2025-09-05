@@ -17,6 +17,7 @@ api_id = config["api_id"]
 api_hash = config["api_hash"]
 chat_ids = config["chat_ids"]
 messages = config["messages"]
+wait_for = config["wait_for"]
 
 app = Client("test", api_id=api_id, api_hash=api_hash, workdir="sessions")
 async def main():
@@ -35,16 +36,17 @@ async def main():
           try:
             await app.send_message(chat_id, msg, parse_mode=ParseMode.HTML)
           except FloodWait as flood_wait:
-            print(f"FloodWait for {flood_wait.value}...")
+            logger.warning(f"FloodWait for {flood_wait.value}...")
             await asyncio.sleep(flood_wait.value)
             return sem_task(msg, chat_id)
           except SlowmodeWait as flood_wait:
-            print(f"SlowmodeWait for {flood_wait.value}...")
+            logger.warning(f"SlowmodeWait for {flood_wait.value}...")
             await asyncio.sleep(flood_wait.value)
             return sem_task(msg, chat_id)
           except Exception as e:
             tb_str = traceback.format_exc()
-            print(f"failed to send message: {e} / {tb_str}")
+            logger.warning(f"failed to send message: {e} / {tb_str}")
+            raise e
 
       tasks = []
       for chat_id in chat_ids:
@@ -52,6 +54,14 @@ async def main():
         await asyncio.sleep(0.2)
 
       results = await asyncio.gather(*tasks, return_exceptions=True)
+      suc = 0
+      for res in results:
+        if isinstance(res, BaseException):
+          continue
+
+        suc += 1
+      logger.warning(f"sent to {suc}/{len(chat_ids)}, waiting {wait_for} secs...")
+      await asyncio.sleep(wait_for)
 
 if __name__ == "__main__":
   app.run(main())
