@@ -117,3 +117,5 @@ compose.yml
 config.json
 
 sessions
+photos/*.jpg
+photos/*.png
