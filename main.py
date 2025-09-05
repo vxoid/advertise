@@ -19,7 +19,9 @@ chat_ids = config["chat_ids"]
 messages = config["messages"]
 wait_for = config["wait_for"]
 
-app = Client("test", api_id=api_id, api_hash=api_hash, workdir="sessions")
+SESSION_FOLDER = "sessions"
+os.makedirs(SESSION_FOLDER, exist_ok=True)
+app = Client("session", api_id=api_id, api_hash=api_hash, workdir=SESSION_FOLDER)
 async def main():
   async with app:
     for chat_id in chat_ids:
