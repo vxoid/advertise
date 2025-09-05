@@ -2,7 +2,6 @@ import os
 import json
 import random
 import asyncio
-import traceback
 from pyrogram import Client
 from pyrogram.enums import ParseMode, ClientPlatform
 from pyrogram.errors import FloodWait, SlowmodeWait
@@ -40,16 +39,14 @@ async def main():
           try:
             await app.send_photo(chat_id, photo=attachment, caption=msg, parse_mode=ParseMode.HTML, message_thread_id=thread_id)
           except FloodWait as flood_wait:
-            logger.warning(f"FloodWait for {flood_wait.value}...")
+            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] FloodWait for {flood_wait.value}...")
             await asyncio.sleep(flood_wait.value)
             return sem_task(msg, chat_id, thread_id=thread_id, attachment=attachment)
           except SlowmodeWait as flood_wait:
-            logger.warning(f"SlowmodeWait for {flood_wait.value}...")
-            await asyncio.sleep(flood_wait.value)
-            return sem_task(msg, chat_id, thread_id=thread_id, attachment=attachment)
+            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] SlowmodeWait for {flood_wait.value}...")
+            raise e
           except Exception as e:
-            tb_str = traceback.format_exc()
-            logger.warning(f"failed to send message: {e} / {tb_str}")
+            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] failed to send message: {e}")
             raise e
 
       tasks = []
