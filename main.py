@@ -4,13 +4,13 @@ import random
 import asyncio
 import traceback
 from pyrogram import Client
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ParseMode, ClientPlatform
 from pyrogram.errors import FloodWait, SlowmodeWait
 import logging
 
 logger = logging.getLogger(__name__)
 with open("config.json") as file:
-  config = json.loads(file)
+  config = json.loads(file.read())
 
 api_id = config["api_id"]
 api_hash = config["api_hash"]
@@ -20,7 +20,7 @@ wait_for = config["wait_for"]
 
 SESSION_FOLDER = "sessions"
 os.makedirs(SESSION_FOLDER, exist_ok=True)
-app = Client("session", api_id=api_id, api_hash=api_hash, workdir=SESSION_FOLDER)
+app = Client("session", api_id=api_id, api_hash=api_hash, workdir=SESSION_FOLDER, device_model="autoadv", client_platform=ClientPlatform.ANDROID, app_version="Android 11.14.1")
 async def main():
   async with app:
     for chat_id in chat_ids:
