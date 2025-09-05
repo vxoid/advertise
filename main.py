@@ -1,6 +1,5 @@
 import os
 import json
-import dotenv
 import random
 import asyncio
 import traceback
