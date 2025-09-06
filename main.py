@@ -41,13 +41,16 @@ async def main():
                                   parse_mode=ParseMode.HTML, message_thread_id=thread_id)
               return
             except FloodWait as fw:
-              logger.warning(f"[{chat_id} - {thread_id or 'no thread'}] FloodWait for {fw.value} sec (attempt {attempts})")
+              logger.error(f"[{chat_id} - {thread_id or 'no thread'}] FloodWait for {fw.value} sec (attempt {attempts})")
               await asyncio.sleep(fw.value)
             except SlowmodeWait as smw:
-              logger.warning(f"[{chat_id} - {thread_id or 'no thread'}] SlowmodeWait for {smw.value} sec (attempt {attempts})")
+              logger.error(f"[{chat_id} - {thread_id or 'no thread'}] SlowmodeWait for {smw.value} sec (attempt {attempts})")
               raise smw
+            except asyncio.CancelledError as e:
+              logger.error(f"[{chat_id} - {thread_id or 'no thread'}] Task cancelled (attempt {attempts}): {e}")
+              raise e
             except Exception as e:
-              logger.exception(f"[{chat_id} - {thread_id or 'no thread'}] Failed to send message (attempt #{attempts}): {e}")
+              logger.error(f"[{chat_id} - {thread_id or 'no thread'}] Failed to send message (attempt #{attempts}): {e}")
               raise e
 
       tasks = []
