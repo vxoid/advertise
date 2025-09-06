@@ -6,6 +6,7 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode, ClientPlatform
 from pyrogram.errors import FloodWait, SlowmodeWait
 from pathlib import Path
+import traceback
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,31 +24,31 @@ os.makedirs(attachment_dir, exist_ok=True)
 SESSION_FOLDER = "sessions"
 os.makedirs(SESSION_FOLDER, exist_ok=True)
 app = Client("session", api_id=api_id, api_hash=api_hash, workdir=SESSION_FOLDER, device_model="autoadv", client_platform=ClientPlatform.ANDROID, app_version="Android 11.14.1")
-async def main():
-  async with app:
-    for chat in chats:
-      await app.get_chat(int(chat["id"]))
-      async for m in app.get_chat_history(int(chat["id"]), limit=1):
-        pass
-    
-    while True:
+async def main():    
+  while True:
+    await app.start()
+    try:
       max_concurrency = 5
       semaphore = asyncio.Semaphore(max_concurrency)
 
       async def sem_task(msg, chat_id, thread_id=None, attachment=None):
-        async with semaphore:
-          try:
-            await app.send_photo(chat_id, photo=attachment, caption=msg, parse_mode=ParseMode.HTML, message_thread_id=thread_id)
-          except FloodWait as flood_wait:
-            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] FloodWait for {flood_wait.value}...")
-            await asyncio.sleep(flood_wait.value)
-            return sem_task(msg, chat_id, thread_id=thread_id, attachment=attachment)
-          except SlowmodeWait as flood_wait:
-            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] SlowmodeWait for {flood_wait.value}...")
-            raise e
-          except Exception as e:
-            logger.warning(f"[{chat_id} - {thread_id | 'no thread'}] failed to send message: {e}")
-            raise e
+        attempts = 0
+        while True:
+          async with semaphore:
+            attempts += 1
+            try:
+              await app.send_photo(chat_id, photo=attachment, caption=msg,
+                                  parse_mode=ParseMode.HTML, message_thread_id=thread_id)
+              return
+            except FloodWait as fw:
+              logger.warning(f"[{chat_id} - {thread_id or 'no thread'}] FloodWait for {fw.value} sec (attempt {attempts})")
+              await asyncio.sleep(fw.value)
+            except SlowmodeWait as smw:
+              logger.warning(f"[{chat_id} - {thread_id or 'no thread'}] SlowmodeWait for {smw.value} sec (attempt {attempts})")
+              raise smw
+            except Exception as e:
+              logger.exception(f"[{chat_id} - {thread_id or 'no thread'}] Failed to send message (attempt #{attempts}): {e}")
+              raise e
 
       tasks = []
       for chat in chats:
@@ -55,6 +56,10 @@ async def main():
         await asyncio.sleep(0.2)
 
       results = await asyncio.gather(*tasks, return_exceptions=True)
+    except Exception as e:
+      tb_str = traceback.format_exc()
+      logger.error(f"error: {e} / {tb_str}")
+    finally:
       suc = 0
       for res in results:
         if isinstance(res, BaseException):
@@ -62,7 +67,8 @@ async def main():
 
         suc += 1
       logger.warning(f"sent to {suc}/{len(chats)}, waiting {wait_for} secs...")
-      await asyncio.sleep(wait_for)
+      results = []
+      await asyncio.gather(asyncio.sleep(wait_for), app.stop())
 
 def list_image_files(directory, recursive=False, exts=None):
   if exts is None:
